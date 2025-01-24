@@ -1,6 +1,3 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
-
 name: Node.js CI
 
 on:
@@ -12,17 +9,42 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v4
-    - name: Do yarn stuff
+
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
         cache: 'yarn'
-    - run: yarn
-    - run: yarn build
-    - run: yarn test
-    - run: yarn test:e2e
+
+    - name: Install dependencies
+      run: yarn
+
+    - name: Build the source
+      run: yarn build
+
+    - name: Run unit tests
+      run: yarn test --junit --outputFile=test-results/junit.xml
+      env:
+        CI: true # Ensures test results are formatted for CI environments
+
+    - name: Run E2E tests
+      run: yarn test:e2e --junit --outputFile=test-results/e2e-junit.xml
+      env:
+        CI: true
+
+    - name: Upload JUnit test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: junit-test-results
+        path: test-results/*.xml
+
+    - name: Publish Test Report
+      uses: dorny/test-reporter@v1
+      with:
+        name: JUnit Tests
+        path: test-results/*.xml
+        reporter: junit
